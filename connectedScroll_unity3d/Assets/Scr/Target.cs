@@ -27,7 +27,7 @@ public class Target : MonoBehaviour
     private Vector2 _localPoint;
 
     private const float DELTA_ERROR = 0.5f;
-    private const float MAX_MOTION = 0f;
+    public static float KOEF_MOTION;
 
     public static Dictionary<Target, KeyValuePair<Target, int>> neighborSequence = new Dictionary<Target, KeyValuePair<Target, int>>();
 
@@ -99,7 +99,7 @@ public class Target : MonoBehaviour
         float delta = GetDelta(target); //разница текущего и эталонного расстояния
         if (Mathf.Abs(delta) > DELTA_ERROR) //надо двигать
         {
-            float max = Mathf.Abs(delta) * Time.deltaTime * 20   /*(_connectController.Distance() - index)*/;            
+            float max = Mathf.Abs(delta) * Time.deltaTime * KOEF_MOTION   /*(_connectController.Distance() - index)*/;            
             delta = Mathf.Clamp(delta, -max, max);
             RectTransform.anchoredPosition = new Vector2(RectTransform.anchoredPosition.x - delta, RectTransform.anchoredPosition.y);
         }
