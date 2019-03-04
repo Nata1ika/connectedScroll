@@ -4,6 +4,10 @@ using UnityEngine;
 
 public class Target : MonoBehaviour
 {
+    public static System.Action<Target> ChangeMotionTargetEvent;
+
+    [SerializeField] ConnectController _connectController;
+
     private List<KeyValuePair<Target, float>> _neighborHorizontal = new List<KeyValuePair<Target, float>>();
     //private KeyValuePair<Target, float> _neighborVertical;
 
@@ -22,11 +26,10 @@ public class Target : MonoBehaviour
     /// </summary>
     private Vector2 _localPoint;
 
-    private bool _markerUpdate = false;
-    private bool _markerUpdateRecursion = false;
-
     private const float DELTA_ERROR = 0.5f;
-    public const float MAX_MOTION = 0f;
+    private const float MAX_MOTION = 0f;
+
+    public static Dictionary<Target, KeyValuePair<Target, int>> neighborSequence = new Dictionary<Target, KeyValuePair<Target, int>>();
 
     /// <summary>
     /// время предыдущего клика
@@ -53,9 +56,6 @@ public class Target : MonoBehaviour
 
     private void Update()
     {
-        _markerUpdate = false;
-        _markerUpdateRecursion = false;
-
         if (_isMotion) //главная ячейка для движения 
         {
             if (Input.GetMouseButton(0)) //продолжаем движение
@@ -68,6 +68,7 @@ public class Target : MonoBehaviour
             {
                 _isMotion = false;
                 MotionTarget = null;
+                ChangeMotionTargetEvent?.Invoke(MotionTarget);
             }
         }
 
@@ -79,43 +80,34 @@ public class Target : MonoBehaviour
             {
                 _isMotion = true;
                 MotionTarget = this;
+
+                neighborSequence.Clear();
+                CreateNeighborDictionary(0);
+
+                ChangeMotionTargetEvent?.Invoke(MotionTarget);
             }
         }
     }
 
-    public void UpdatePosition(Target target, float speed, float koef)
+    public void UpdatePosition(Target target, int index)
     {
-        if (_markerUpdate)
+        if (index < 0)
         {
             return;
         }
-        _markerUpdate = true;
 
-        if (target != null)
+        float delta = GetDelta(target); //разница текущего и эталонного расстояния
+        if (Mathf.Abs(delta) > DELTA_ERROR) //надо двигать
         {
-            float delta = RectTransform.anchoredPosition.x - target.RectTransform.anchoredPosition.x; //текущее расстояние
-            delta -= GetNeighborValue(target); //разница текущего и эталонного расстояния
-            if (Mathf.Abs(delta) > DELTA_ERROR) //надо двигать
-            {
-                delta = Mathf.Clamp(delta, -koef * speed, koef * speed);
-                RectTransform.anchoredPosition = new Vector2(RectTransform.anchoredPosition.x - delta, RectTransform.anchoredPosition.y);
-            }
-        }
-
-        for (int i = 0; i < _neighborHorizontal.Count; i++)
-        {
-            if (_neighborHorizontal[i].Key != target)
-            {
-                _neighborHorizontal[i].Key.UpdatePosition(this, Mathf.Max(GetDeltaNeighbor(i) * Time.deltaTime, MAX_MOTION), koef * 0.7f);
-            }
+            float max = Mathf.Abs(delta) * Time.deltaTime * 20   /*(_connectController.Distance() - index)*/;            
+            delta = Mathf.Clamp(delta, -max, max);
+            RectTransform.anchoredPosition = new Vector2(RectTransform.anchoredPosition.x - delta, RectTransform.anchoredPosition.y);
         }
     }
 
-    public void UpdatePositionRecursion()
-    {
-
-    }
-
+    /// <summary>
+    /// получить эталонное расстояние
+    /// </summary>
     private float GetNeighborValue(Target target)
     {
         for (int i = 0; i < _neighborHorizontal.Count; i++)
@@ -128,10 +120,66 @@ public class Target : MonoBehaviour
         return 0;
     }
 
-    public float GetDeltaNeighbor(int index)
+    /// <summary>
+    /// получить разницу расстояний текущего и эталонного
+    /// </summary>
+    private float GetDelta(int index)
     {
-        return Mathf.Abs
-        (RectTransform.anchoredPosition.x - _neighborHorizontal[0].Key.RectTransform.anchoredPosition.x -
-        _neighborHorizontal[index].Value);
+        return GetDelta(_neighborHorizontal[index].Key, _neighborHorizontal[index].Value);
+    }
+
+    /// <summary>
+    /// получить разницу расстояний текущего и эталонного
+    /// </summary>
+    private float GetDelta(Target target)
+    {
+        return GetDelta(target, GetNeighborValue(target));
+    }
+
+    /// <summary>
+    /// получить разницу расстояний текущего и эталонного
+    /// </summary>
+    private float GetDelta(Target target, float etalonDistance)
+    {
+        return RectTransform.anchoredPosition.x - target.RectTransform.anchoredPosition.x - etalonDistance;
+    }
+
+
+    public void CreateNeighborDictionary(int index)
+    {
+        /*if (index >= _connectController.Distance())
+        {
+            return;
+        }*/
+
+        if (index == 0)
+        {
+            neighborSequence.Add(this, new KeyValuePair<Target, int>(null, -1));
+        }
+
+        for (int i = 0; i < _neighborHorizontal.Count; i++)
+        {
+            KeyValuePair<Target, int> targetPair;
+            if (neighborSequence.TryGetValue(_neighborHorizontal[i].Key, out targetPair))
+            {
+                if (targetPair.Value > index)
+                {
+                    targetPair = new KeyValuePair<Target, int>(this, index);
+
+                    //neighborSequence.Remove(_neighborHorizontal[i].Key);
+                    //neighborSequence.Add(_neighborHorizontal[i].Key, targetPair);
+
+                    neighborSequence[_neighborHorizontal[i].Key] = targetPair;
+                }
+            }
+            else
+            {
+                targetPair = new KeyValuePair<Target, int>(this, index);
+                neighborSequence.Add(_neighborHorizontal[i].Key, targetPair);
+                Debug.Log(_neighborHorizontal[i].Key.gameObject.name + "  ---  " + index);
+
+                _neighborHorizontal[i].Key.CreateNeighborDictionary(index + 1);
+            }            
+        }
     }
 }

@@ -67,6 +67,20 @@ public class ConnectController : MonoBehaviour
         return summ;
     }
 
+    public int Distance()
+    {
+        int max = 0;
+        for (int i = 0; i < _count.Length; i++)
+        {
+            if (max < _count[i])
+            {
+                max = _count[i];
+            }
+        }
+        max += _count.Length + 2;
+        return max;
+    }
+
     /// <summary>
     /// получить индекс объекта в общей нумерации
     /// </summary>
@@ -86,9 +100,9 @@ public class ConnectController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (Target.MotionTarget != null)
+        foreach(var obj in Target.neighborSequence)
         {
-            Target.MotionTarget.UpdatePosition(null, Mathf.Max(Target.MotionTarget.GetDeltaNeighbor(0) * Time.deltaTime, Target.MAX_MOTION), 20f);
+            obj.Key.UpdatePosition(obj.Value.Key, obj.Value.Value);
         }
     }
 }
