@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,6 +9,9 @@ public class ConnectController : MonoBehaviour
     /// количество объектов в рядах
     /// </summary>
     [SerializeField] int[] _count;
+
+    private Dictionary<Target, Target> _neighborSequence = new Dictionary<Target, Target>();
+    private Queue<Target> _neighborQueue = new Queue<Target>();
 
     private Target[] _targets;
 
@@ -55,7 +59,14 @@ public class ConnectController : MonoBehaviour
                 }
             }
         }
+
+        Target.ChangeMotionTargetEvent += ChangeTarget;
     }
+
+    private void OnDestroy()
+    {
+        Target.ChangeMotionTargetEvent -= ChangeTarget;
+    }    
 
     private int SummCount()
     {
@@ -98,11 +109,47 @@ public class ConnectController : MonoBehaviour
         return index;
     }
 
+    private void ChangeTarget(Target obj)
+    {
+        if (obj == null)
+        {
+            return;
+        }
+
+        _neighborSequence.Clear();
+        _neighborQueue.Clear();
+
+        _neighborSequence.Add(obj, null);
+
+        while (obj != null)
+        {
+            obj.CreateNeighborDictionary();
+            if (_neighborQueue.Count != 0)
+            {
+                obj = _neighborQueue.Dequeue();
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    public void AddNeighborSequence(Target first, Target second)
+    {
+        if (_neighborSequence.ContainsKey(first))
+        {
+            return;
+        }
+        _neighborSequence.Add(first, second);
+        _neighborQueue.Enqueue(first);
+    }
+
     private void LateUpdate()
     {
-        foreach(var obj in Target.neighborSequence)
+        foreach(var obj in _neighborSequence)
         {
-            obj.Key.UpdatePosition(obj.Value.Key, obj.Value.Value);
+            obj.Key.UpdatePosition(obj.Value);
         }
     }
 }

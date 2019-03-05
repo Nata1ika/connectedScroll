@@ -1,14 +1,16 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class Target : MonoBehaviour
 {
     public static System.Action<Target> ChangeMotionTargetEvent;
 
     [SerializeField] ConnectController _connectController;
+    [SerializeField] protected Camera _camera;
 
-    private List<KeyValuePair<Target, float>> _neighborHorizontal = new List<KeyValuePair<Target, float>>();
+    private List<KeyValuePair<Target, Vector2>> _neighborHorizontal = new List<KeyValuePair<Target, Vector2>>();
     //private KeyValuePair<Target, float> _neighborVertical;
 
     /// <summary>
@@ -24,12 +26,10 @@ public class Target : MonoBehaviour
     /// <summary>
     /// смещение относительно центра при первом клике
     /// </summary>
-    private Vector2 _localPoint;
+    protected Vector2 _localPoint;
 
     private const float DELTA_ERROR = 0.5f;
-    public static float KOEF_MOTION;
-
-    public static Dictionary<Target, KeyValuePair<Target, int>> neighborSequence = new Dictionary<Target, KeyValuePair<Target, int>>();
+    public static float KOEF_MOTION = 40f;    
 
     /// <summary>
     /// время предыдущего клика
@@ -37,7 +37,7 @@ public class Target : MonoBehaviour
     //private float _lastClickTime;
 
     private RectTransform _rectTarnsform;
-    public RectTransform RectTransform
+    protected RectTransform rectTransform
     {
         get
         {
@@ -51,7 +51,12 @@ public class Target : MonoBehaviour
 
     public void AddNeighbor(Target target)
     {
-        _neighborHorizontal.Add(new KeyValuePair<Target, float>(target, RectTransform.anchoredPosition.x - target.RectTransform.anchoredPosition.x));
+        _neighborHorizontal.Add(new KeyValuePair<Target, Vector2>(target, GetCurrentValue(target)));
+    }
+
+    protected virtual void Start()
+    {
+        gameObject.GetComponentInChildren<UnityEngine.UI.Text>().text = gameObject.name.Substring(6);
     }
 
     private void Update()
@@ -60,55 +65,93 @@ public class Target : MonoBehaviour
         {
             if (Input.GetMouseButton(0)) //продолжаем движение
             {
-                Vector2 newPoint;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(RectTransform, Input.mousePosition, null, out newPoint);
-                RectTransform.anchoredPosition = RectTransform.anchoredPosition + new Vector2(newPoint.x - _localPoint.x, 0);
+                MotionActive();
             }
             else
-            {
-                _isMotion = false;
-                MotionTarget = null;
+            {                
+                SetActive(false);
                 ChangeMotionTargetEvent?.Invoke(MotionTarget);
             }
         }
 
 
         if (MotionTarget == null && Input.GetMouseButton(0))//ищем ячейку для движения
-        {
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(RectTransform, Input.mousePosition, null, out _localPoint);
-            if(RectTransform.rect.Contains(_localPoint))
+        {            
+            if(CanBeActive())
             {
-                _isMotion = true;
-                MotionTarget = this;
-
-                neighborSequence.Clear();
-                CreateNeighborDictionary(0);
+                SetActive(true);
 
                 ChangeMotionTargetEvent?.Invoke(MotionTarget);
             }
         }
     }
 
-    public void UpdatePosition(Target target, int index)
+    /// <summary>
+    /// может ли элемент быть выбран в качестве активного
+    /// </summary>
+    protected virtual bool CanBeActive()
     {
-        if (index < 0)
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, Input.mousePosition, _camera, out _localPoint);
+        return rectTransform.rect.Contains(_localPoint);
+    }
+
+    /// <summary>
+    /// текущий объект активен, двигаем его в зависимости от полжения мыши
+    /// </summary>
+    protected virtual void MotionActive()
+    {
+        Vector2 newPoint;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, Input.mousePosition, _camera, out newPoint);
+        rectTransform.anchoredPosition = rectTransform.anchoredPosition + newPoint - _localPoint; //new Vector2(newPoint.x - _localPoint.x, 0);
+    }
+
+    public virtual void UpdatePosition(Target target)
+    {
+        if (target == null)
         {
             return;
         }
 
-        float delta = GetDelta(target); //разница текущего и эталонного расстояния
-        if (Mathf.Abs(delta) > DELTA_ERROR) //надо двигать
+        Vector2 delta = GetDelta(target); //разница текущего и эталонного расстояния
+        if (Mathf.Abs(delta.x) > DELTA_ERROR || Mathf.Abs(delta.y) > DELTA_ERROR) //надо двигать
         {
-            float max = Mathf.Abs(delta) * Time.deltaTime * KOEF_MOTION   /*(_connectController.Distance() - index)*/;            
-            delta = Mathf.Clamp(delta, -max, max);
-            RectTransform.anchoredPosition = new Vector2(RectTransform.anchoredPosition.x - delta, RectTransform.anchoredPosition.y);
+            Vector2 max = Time.deltaTime * KOEF_MOTION * new Vector2(Mathf.Abs(delta.x), Mathf.Abs(delta.y));
+
+            Vector2 curr = GetCurrentValue(target);
+            curr.x = Mathf.Abs(curr.x);
+            curr.y = Mathf.Abs(curr.y);
+
+            Vector2 min = GetMinHorizontal(target);
+            min -= curr;
+
+            max.x = Mathf.Max(max.x, min.x);
+            max.y = Mathf.Max(max.y, min.y);
+
+            delta.x = Mathf.Clamp(delta.x, -max.x, max.x);
+            delta.y = Mathf.Clamp(delta.y, -max.y, max.y);      
+            
+            rectTransform.anchoredPosition = rectTransform.anchoredPosition - delta;
         }
+    }
+
+    /// <summary>
+    /// получить минимальное расстояние между объектами
+    /// </summary>
+    protected virtual Vector2 GetMinHorizontal(Target target)
+    {
+        float x1 = (rectTransform.rect.width + target.rectTransform.rect.width) / 2f;
+        float x2 = Mathf.Abs(GetNeighborValue(target).x - 20f);
+
+        float y1 = 80f;
+        float y2 = Mathf.Abs(GetNeighborValue(target).y);
+
+        return new Vector2(Mathf.Min(x1, x2), Mathf.Min(y1, y2));
     }
 
     /// <summary>
     /// получить эталонное расстояние
     /// </summary>
-    private float GetNeighborValue(Target target)
+    private Vector2 GetNeighborValue(Target target)
     {
         for (int i = 0; i < _neighborHorizontal.Count; i++)
         {
@@ -117,13 +160,23 @@ public class Target : MonoBehaviour
                 return _neighborHorizontal[i].Value;
             }
         }
-        return 0;
+        return Vector2.zero;
+    }
+
+    /// <summary>
+    /// текущее расстояние между объектами
+    /// </summary>
+    /// <param name="target"></param>
+    /// <returns></returns>
+    private Vector2 GetCurrentValue(Target target)
+    {
+        return rectTransform.anchoredPosition - target.rectTransform.anchoredPosition;
     }
 
     /// <summary>
     /// получить разницу расстояний текущего и эталонного
     /// </summary>
-    private float GetDelta(int index)
+    private Vector2 GetDelta(int index)
     {
         return GetDelta(_neighborHorizontal[index].Key, _neighborHorizontal[index].Value);
     }
@@ -131,7 +184,7 @@ public class Target : MonoBehaviour
     /// <summary>
     /// получить разницу расстояний текущего и эталонного
     /// </summary>
-    private float GetDelta(Target target)
+    private Vector2 GetDelta(Target target)
     {
         return GetDelta(target, GetNeighborValue(target));
     }
@@ -139,47 +192,36 @@ public class Target : MonoBehaviour
     /// <summary>
     /// получить разницу расстояний текущего и эталонного
     /// </summary>
-    private float GetDelta(Target target, float etalonDistance)
+    private Vector2 GetDelta(Target target, Vector2 etalonDistance)
     {
-        return RectTransform.anchoredPosition.x - target.RectTransform.anchoredPosition.x - etalonDistance;
+        return GetCurrentValue(target) - etalonDistance;
     }
 
 
-    public void CreateNeighborDictionary(int index)
+    public void CreateNeighborDictionary()
     {
-        /*if (index >= _connectController.Distance())
-        {
-            return;
-        }*/
-
-        if (index == 0)
-        {
-            neighborSequence.Add(this, new KeyValuePair<Target, int>(null, -1));
-        }
-
         for (int i = 0; i < _neighborHorizontal.Count; i++)
         {
-            KeyValuePair<Target, int> targetPair;
-            if (neighborSequence.TryGetValue(_neighborHorizontal[i].Key, out targetPair))
-            {
-                if (targetPair.Value > index)
-                {
-                    targetPair = new KeyValuePair<Target, int>(this, index);
-
-                    //neighborSequence.Remove(_neighborHorizontal[i].Key);
-                    //neighborSequence.Add(_neighborHorizontal[i].Key, targetPair);
-
-                    neighborSequence[_neighborHorizontal[i].Key] = targetPair;
-                }
-            }
-            else
-            {
-                targetPair = new KeyValuePair<Target, int>(this, index);
-                neighborSequence.Add(_neighborHorizontal[i].Key, targetPair);
-                Debug.Log(_neighborHorizontal[i].Key.gameObject.name + "  ---  " + index);
-
-                _neighborHorizontal[i].Key.CreateNeighborDictionary(index + 1);
-            }            
+            _connectController.AddNeighborSequence(_neighborHorizontal[i].Key, this);            
         }
+    }
+
+    private void SetActive(bool active)
+    {
+        _isMotion = active;
+        MotionTarget = active ? this : null;
+
+        transform.localScale = (active ? 0.9f : 1) * Vector3.one;
+    }
+
+    [ContextMenu("Neighbor")]
+    private void DebugNeighbor()
+    {
+        string text = string.Format("Count = {0};", _neighborHorizontal.Count);
+        for (int i = 0; i < _neighborHorizontal.Count; i++)
+        {
+            text += string.Format(" {0} = {1}; ", i, _neighborHorizontal[i].Key.gameObject.name);
+        }
+        Debug.Log(text);
     }
 }

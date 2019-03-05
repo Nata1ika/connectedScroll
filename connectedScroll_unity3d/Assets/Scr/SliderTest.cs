@@ -13,7 +13,7 @@ public class SliderTest : MonoBehaviour
     private void Start()
     {
         _slider.onValueChanged.AddListener(Change);
-        _slider.value = 20f;
+        _slider.value = 35f;
     }
 
     private void OnDestroy()
