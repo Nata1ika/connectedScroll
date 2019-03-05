@@ -116,7 +116,7 @@ public class Target : MonoBehaviour
         if (Mathf.Abs(delta.x) > DELTA_ERROR || Mathf.Abs(delta.y) > DELTA_ERROR) //надо двигать
         {
             Vector2 max = Time.deltaTime * KOEF_MOTION * new Vector2(Mathf.Abs(delta.x), Mathf.Abs(delta.y));
-
+            
             Vector2 curr = GetCurrentValue(target);
             curr.x = Mathf.Abs(curr.x);
             curr.y = Mathf.Abs(curr.y);
@@ -126,7 +126,7 @@ public class Target : MonoBehaviour
 
             max.x = Mathf.Max(max.x, min.x);
             max.y = Mathf.Max(max.y, min.y);
-
+            
             delta.x = Mathf.Clamp(delta.x, -max.x, max.x);
             delta.y = Mathf.Clamp(delta.y, -max.y, max.y);      
             
@@ -140,7 +140,7 @@ public class Target : MonoBehaviour
     protected virtual Vector2 GetMinHorizontal(Target target)
     {
         float x1 = (rectTransform.rect.width + target.rectTransform.rect.width) / 2f;
-        float x2 = Mathf.Abs(GetNeighborValue(target).x - 20f);
+        float x2 = Mathf.Abs(GetNeighborValue(target).x) - 20f;
 
         float y1 = 80f;
         float y2 = Mathf.Abs(GetNeighborValue(target).y);

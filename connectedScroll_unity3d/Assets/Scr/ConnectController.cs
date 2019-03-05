@@ -23,6 +23,8 @@ public class ConnectController : MonoBehaviour
             Debug.LogErrorFormat("count obj = {0}, infoCount = {1}", _targets.Length, SummCount());
         }
 
+        Target.ChangeMotionTargetEvent += ChangeTarget;
+
         //по каждому ряду стяжка
         for (int i = 0; i < _count.Length; i++) //i ряд
         {
@@ -60,7 +62,18 @@ public class ConnectController : MonoBehaviour
             }
         }
 
-        Target.ChangeMotionTargetEvent += ChangeTarget;
+        if (_targets[0] is SphereTarget)
+        {
+            for (int i = 0; i < _count.Length; i++) //i ряд
+            {
+                for (int j = 0; j < _count[i]; j++) //j элемент в ряду
+                {
+                    int index = GetIndex(i, j);
+                    var sphere = _targets[index] as SphereTarget;
+                    sphere.SetPosition(j * 360f / _count[i], i * 180f / _count.Length - 90);
+                }
+            }
+        }
     }
 
     private void OnDestroy()

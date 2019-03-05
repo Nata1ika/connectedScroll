@@ -4,20 +4,32 @@ using UnityEngine;
 
 public class SphereTarget : Target
 {
+    [SerializeField] Transform _parentUp;
+    [SerializeField] Transform _parentDown;
+
     [SerializeField] Transform _child;
     [SerializeField] float _radius;
-    [SerializeField] float _damAngle;
-    [SerializeField] float _angle;
 
-    private float y;
+    private float _angle;
+    private float _dam;
 
-    protected override void Start()
+    public void SetPosition(float angle, float dam)
     {
-        y = rectTransform.localPosition.y;
-        rectTransform.localPosition = new Vector3(_radius * Mathf.Cos(_angle * Mathf.Deg2Rad), y, _radius * Mathf.Sin(_angle * Mathf.Deg2Rad));
+        _angle = angle;
+        _dam = dam;
 
-        _child.eulerAngles = new Vector3(_damAngle, 90 - _angle, 0);
+        float hRadius = _radius * Mathf.Cos(_dam * Mathf.Deg2Rad);
+
+        rectTransform.localPosition = new Vector3(
+            hRadius * Mathf.Cos(_angle * Mathf.Deg2Rad),
+            _radius * Mathf.Sin(_dam * Mathf.Deg2Rad),
+            hRadius * Mathf.Sin(_angle * Mathf.Deg2Rad));
+
+        _child.eulerAngles = new Vector3(180 - _dam, 90 - _angle, 0);
+
+        transform.SetParent(rectTransform.localPosition.z > 0 ? _parentUp : _parentDown);
     }
+
 
     protected override bool CanBeActive()
     {
@@ -41,8 +53,8 @@ public class SphereTarget : Target
         _angle = 360 - Mathf.Acos(x / _radius) * Mathf.Rad2Deg;
         float z = _radius * Mathf.Sin(_angle * Mathf.Deg2Rad);
 
-        rectTransform.localPosition = new Vector3(x, y, z);
-        _child.eulerAngles = new Vector3(_damAngle, 90 - _angle, 0);
+        //rectTransform.localPosition = new Vector3(x, y, z);
+        //_child.eulerAngles = new Vector3(_damAngle, 90 - _angle, 0);
     }
 
     //private void Update()
