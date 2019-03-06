@@ -6,9 +6,10 @@ using UnityEngine;
 public class ConnectController : MonoBehaviour
 {
     /// <summary>
-    /// количество объектов в рядах
+    /// настройки объектов по рядам
     /// </summary>
-    [SerializeField] int[] _count;
+    [SerializeField] Row[] _row;
+    [SerializeField] AnimationCurve _sphereScale;
 
     private Dictionary<Target, Target> _neighborSequence = new Dictionary<Target, Target>();
     private Queue<Target> _neighborQueue = new Queue<Target>();
@@ -25,24 +26,48 @@ public class ConnectController : MonoBehaviour
 
         Target.ChangeMotionTargetEvent += ChangeTarget;
 
-        //по каждому ряду стяжка
-        for (int i = 0; i < _count.Length; i++) //i ряд
+        if (_targets[0] is SphereTarget)
         {
-            for (int j = 0; j < _count[i] - 1; j++) //j элемент в ряду
+            for (int i = 0; i < _row.Length; i++) //i ряд
+            {
+                for (int j = 0; j < _row[i].count; j++) //j элемент в ряду
+                {
+                    int index = GetIndex(i, j);
+                    var sphere = _targets[index] as SphereTarget;
+                    sphere.SetPosition((j + 0.5f * (i % 2)) * 360f / _row[i].count, _row[i].damAngle, _row[i].zRotation);
+                }
+            }
+        }
+
+        //по каждому ряду стяжка
+        for (int i = 0; i < _row.Length; i++) //i ряд
+        {
+            for (int j = 0; j < _row[i].count - 1; j++) //j элемент в ряду
             {
                 int index = GetIndex(i, j);
 
                 _targets[index].AddNeighbor(_targets[index + 1]);
                 _targets[index + 1].AddNeighbor(_targets[index]);
             }
+
+            //сферическая стяжка первого и последнего элементов
+            if (_targets[0] is SphereTarget)
+            {
+                int first = GetIndex(i, 0);
+                int last = GetIndex(i, _row[i].count - 1);
+
+                _targets[first].AddNeighbor(_targets[last]);
+                _targets[last].AddNeighbor(_targets[first]);
+            }
         }
 
+        
         //стяжка между рядами
-        for (int i = 0; i < _count.Length - 1; i++) //i ряд
+        for (int i = 0; i < _row.Length - 1; i++) //i ряд
         {
-            for (int j = 0; j < _count[i]; j++) //j элемент в ряду
+            for (int j = 0; j < _row[i].count; j++) //j элемент в ряду
             {
-                if (j < _count[i + 1])
+                if (j < _row[i + 1].count)
                 {
                     int index = GetIndex(i, j);
                     int next = GetIndex(i + 1, j);
@@ -51,58 +76,54 @@ public class ConnectController : MonoBehaviour
                     _targets[next].AddNeighbor(_targets[index]);
                 }
 
-                if (_count[i] != _count[i + 1] && _count[i + 1] - j - 1 >= 0) //с конца
+                if (_row[i].count != _row[i + 1].count && _row[i + 1].count - j - 1 >= 0) //с конца
                 {
-                    int index = GetIndex(i, _count[i] - j - 1);
-                    int next = GetIndex(i + 1, _count[i + 1] - j - 1);
+                    int index = GetIndex(i, _row[i].count - j - 1);
+                    int next = GetIndex(i + 1, _row[i + 1].count - j - 1);
+
+                    _targets[index].AddNeighbor(_targets[next]);
+                    _targets[next].AddNeighbor(_targets[index]);
+                }
+
+                //стяжка для сфер по диагонали
+                if (_targets[0] is SphereTarget)
+                {
+                    int index = GetIndex(i, j);
+                    int next;
+                    if (i % 2 == 0)
+                    {
+                        next = GetIndex(i + 1, j - 1 >= 0 ? j - 1 : _row[i + 1].count - 1);
+                    }
+                    else
+                    {
+                        next = GetIndex(i + 1, j + 1 < _row[i + 1].count ? j + 1 : 0);
+                    }
 
                     _targets[index].AddNeighbor(_targets[next]);
                     _targets[next].AddNeighbor(_targets[index]);
                 }
             }
-        }
-
-        if (_targets[0] is SphereTarget)
-        {
-            for (int i = 0; i < _count.Length; i++) //i ряд
-            {
-                for (int j = 0; j < _count[i]; j++) //j элемент в ряду
-                {
-                    int index = GetIndex(i, j);
-                    var sphere = _targets[index] as SphereTarget;
-                    sphere.SetPosition(j * 360f / _count[i], i * 180f / _count.Length - 90);
-                }
-            }
-        }
+        }        
     }
 
     private void OnDestroy()
     {
         Target.ChangeMotionTargetEvent -= ChangeTarget;
-    }    
+    }
+    
+    public Vector3 GetScale(float dam)
+    {
+        return _sphereScale.Evaluate(dam) * Vector3.one;
+    }
 
     private int SummCount()
     {
         int summ = 0;
-        for (int i = 0; i < _count.Length; i++)
+        for (int i = 0; i < _row.Length; i++)
         {
-            summ += _count[i];
+            summ += _row[i].count;
         }
         return summ;
-    }
-
-    public int Distance()
-    {
-        int max = 0;
-        for (int i = 0; i < _count.Length; i++)
-        {
-            if (max < _count[i])
-            {
-                max = _count[i];
-            }
-        }
-        max += _count.Length + 2;
-        return max;
     }
 
     /// <summary>
@@ -116,7 +137,7 @@ public class ConnectController : MonoBehaviour
         int index = 0;
         for (int r = 0; r < i; r++)
         {
-            index += _count[r];
+            index += _row[r].count;
         }
         index += j;
         return index;
@@ -165,4 +186,12 @@ public class ConnectController : MonoBehaviour
             obj.Key.UpdatePosition(obj.Value);
         }
     }
+}
+
+[Serializable]
+public class Row
+{
+    public int count;
+    public int damAngle;
+    public float zRotation;
 }

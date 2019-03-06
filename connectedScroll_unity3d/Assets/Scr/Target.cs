@@ -7,7 +7,7 @@ public class Target : MonoBehaviour
 {
     public static System.Action<Target> ChangeMotionTargetEvent;
 
-    [SerializeField] ConnectController _connectController;
+    [SerializeField] protected ConnectController _connectController;
     [SerializeField] protected Camera _camera;
 
     private List<KeyValuePair<Target, Vector2>> _neighborHorizontal = new List<KeyValuePair<Target, Vector2>>();
@@ -28,7 +28,7 @@ public class Target : MonoBehaviour
     /// </summary>
     protected Vector2 _localPoint;
 
-    private const float DELTA_ERROR = 0.5f;
+    protected virtual float DELTA_ERROR => 0.5f;
     public static float KOEF_MOTION = 40f;    
 
     /// <summary>
@@ -142,7 +142,7 @@ public class Target : MonoBehaviour
         float x1 = (rectTransform.rect.width + target.rectTransform.rect.width) / 2f;
         float x2 = Mathf.Abs(GetNeighborValue(target).x) - 20f;
 
-        float y1 = 80f;
+        float y1 = 130f;
         float y2 = Mathf.Abs(GetNeighborValue(target).y);
 
         return new Vector2(Mathf.Min(x1, x2), Mathf.Min(y1, y2));
@@ -151,7 +151,7 @@ public class Target : MonoBehaviour
     /// <summary>
     /// получить эталонное расстояние
     /// </summary>
-    private Vector2 GetNeighborValue(Target target)
+    protected Vector2 GetNeighborValue(Target target)
     {
         for (int i = 0; i < _neighborHorizontal.Count; i++)
         {
@@ -168,7 +168,7 @@ public class Target : MonoBehaviour
     /// </summary>
     /// <param name="target"></param>
     /// <returns></returns>
-    private Vector2 GetCurrentValue(Target target)
+    protected virtual Vector2 GetCurrentValue(Target target)
     {
         return rectTransform.anchoredPosition - target.rectTransform.anchoredPosition;
     }
@@ -184,7 +184,7 @@ public class Target : MonoBehaviour
     /// <summary>
     /// получить разницу расстояний текущего и эталонного
     /// </summary>
-    private Vector2 GetDelta(Target target)
+    protected Vector2 GetDelta(Target target)
     {
         return GetDelta(target, GetNeighborValue(target));
     }
