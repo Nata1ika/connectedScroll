@@ -4,35 +4,16 @@ using UnityEngine;
 
 public class SphereTarget : Target
 {
-    [SerializeField] Transform _parentUp;
-    [SerializeField] Transform _parentDown;
+    [SerializeField] Transform _parent_m100;
+    [SerializeField] Transform _parent_m50;
+    [SerializeField] Transform _parent_0;
+    [SerializeField] Transform _parent_50;
+    [SerializeField] Transform _parent_100;
+    [SerializeField] Transform _parent_p100;
 
-    [SerializeField] Transform _child;
     [SerializeField] float _radius;
 
-    private float _angle;
     public float angle;
-    /*
-    {
-        get
-        {
-            return _angle;
-        }
-        private set
-        {
-            while (value < 0)
-            {
-                value += 360f;
-            }
-            while (value > 360)
-            {
-                value -= 360f;
-            }
-            _angle = value;
-        }
-    }
-    */
-
     public float dam;
     private float _zAngle;
 
@@ -43,6 +24,18 @@ public class SphereTarget : Target
         get
         {
             return _radius * Mathf.Cos(dam * Mathf.Deg2Rad);
+        }
+    }
+
+    protected override float DELTA_CLICK => 5f;
+
+    public static bool Enable = false;
+
+    protected override void Update()
+    {
+        if (Enable)
+        {
+            base.Update();
         }
     }
 
@@ -65,7 +58,30 @@ public class SphereTarget : Target
         _child.localEulerAngles = new Vector3(dam, 270 - angle, _zAngle);
         _child.localScale = _connectController.GetScale(dam);
 
-        transform.SetParent(rectTransform.localPosition.z >= 0 ? _parentUp : _parentDown);
+        if (rectTransform.localPosition.z < -100f)
+        {
+            transform.SetParent(_parent_m100);
+        }
+        else if (rectTransform.localPosition.z < -50f)
+        {
+            transform.SetParent(_parent_m50);
+        }
+        else if (rectTransform.localPosition.z < 0)
+        {
+            transform.SetParent(_parent_0);
+        }
+        else if (rectTransform.localPosition.z < 50)
+        {
+            transform.SetParent(_parent_50);
+        }
+        else if (rectTransform.localPosition.z < 100)
+        {
+            transform.SetParent(_parent_100);
+        }
+        else
+        {
+            transform.SetParent(_parent_p100);
+        }
     }
 
 
@@ -83,18 +99,31 @@ public class SphereTarget : Target
     /// </summary>
     protected override void MotionActive()
     {
+        if (! Enable)
+        {
+            return;
+        }
+
         Vector2 newPoint;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, Input.mousePosition, _camera, out newPoint);
 
         float x = rectTransform.localPosition.x + newPoint.x - _localPoint.x;
         x = Mathf.Clamp(x, -_hRadius, _hRadius);
+
+        float lastAngle = angle;
         angle = 360 - Mathf.Acos(x / _hRadius) * Mathf.Rad2Deg;
+        _deltaClcik += new Vector2(Mathf.Abs(angle - lastAngle), 0);
 
         SetPosition();
     }
 
     public override void UpdatePosition(Target target)
     {
+        if (!Enable)
+        {
+            return;
+        }
+
         if (target == null)
         {
             return;
@@ -122,13 +151,6 @@ public class SphereTarget : Target
             SetPosition();
         }
     }
-
-    //private void Update()
-    //{
-    //    RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, Input.mousePosition, _camera, out _localPoint);
-    //    Debug.Log(_localPoint + " --- " + rectTransform.rect.Contains(_localPoint) + " --- " + RectTransformUtility.RectangleContainsScreenPoint
-    //        (rectTransform, new Vector2(Input.mousePosition.x, Input.mousePosition.y), _camera));
-    //}
 
     protected override Vector2 GetCurrentValue(Target target)
     {
