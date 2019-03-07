@@ -3,19 +3,20 @@ using UnityEngine.UI;
 
 public class Active : MonoBehaviour
 {
-    [SerializeField] Animation _animation;
-    [SerializeField] Text _text;
+    [SerializeField] GameObject _active;
 
-    public void Show(Target target)
+    private void Start()
     {
-        gameObject.SetActive(true);
-        _animation.Play("ActiveTarget");
-        _text.text = target.gameObject.name;
+        Target.DoubleClickEvent += Show;
+    }
+
+    private void Show(Target target)
+    {
+        _active.SetActive(true);
     }
 
     public void Hide()
     {
-        gameObject.SetActive(false);
-        _animation.Stop();
+        _active.SetActive(false);
     }
 }

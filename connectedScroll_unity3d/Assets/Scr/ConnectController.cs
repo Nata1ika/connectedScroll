@@ -23,8 +23,6 @@ public class ConnectController : MonoBehaviour
     [SerializeField] Vector2 _deltaPositionPlane;
     [SerializeField] Vector2 _offsetPositionPlane;
 
-    [SerializeField] Active _activeTarget;
-
     private Dictionary<Target, Target> _neighborSequence = new Dictionary<Target, Target>();
     private Queue<Target> _neighborQueue = new Queue<Target>();
 
@@ -290,7 +288,6 @@ public class ConnectController : MonoBehaviour
     {
         Debug.Log("DOUBLE  " + target.gameObject.name);
         StopClick();
-        _activeTarget.Show(target);
     }
 
     public void StartClick()
