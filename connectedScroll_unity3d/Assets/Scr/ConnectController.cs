@@ -288,6 +288,15 @@ public class ConnectController : MonoBehaviour
     {
         Debug.Log("DOUBLE  " + target.gameObject.name);
         StopClick();
+        if (_isPlane)
+        {
+
+        }
+        else
+        {
+            var sphere = target as SphereTarget;
+            sphere.StartCoroutine(sphere.Rotate(CameraController.TIME_MOTION));
+        }
     }
 
     public void StartClick()
@@ -306,8 +315,8 @@ public class ConnectController : MonoBehaviour
 
     private void StopClick()
     {
-        _neighborSequence.Clear();
-        _neighborQueue.Clear();
+        //_neighborSequence.Clear();
+        //_neighborQueue.Clear();
 
         PlaneTarget.Enable = false;
         SphereTarget.Enable = false;

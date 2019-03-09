@@ -5,34 +5,25 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     [SerializeField] float _planeZ = -160f;
+    [SerializeField] CameraPosition[] _camPositions;
 
     /// <summary>
     /// положение камеры в обычном режиме
     /// </summary>
     private Vector3 _defaultPosition;
+    private Vector3 _defaultRotation;
 
-    /// <summary>
-    /// целевое положение
-    /// </summary>
-    private Vector3 _position;
-
-    /// <summary>
-    /// оставшееся время движения
-    /// </summary>
-    private float _timeMotion;
 
     private bool _isPlane;
 
-    /// <summary>
-    /// двигается ли сейчас линейно камера
-    /// </summary>
-    private bool _isMotion = false;
 
-    private const float TIME_MOTION = 1f;
+    public const float TIME_MOTION = 1f;
 
     private void Start()
     {
-        _defaultPosition = gameObject.transform.position;
+        _defaultPosition = transform.position;
+        _defaultRotation = transform.eulerAngles;
+
         Target.DoubleClickEvent += ToTarget;
     }
 
@@ -41,64 +32,94 @@ public class CameraController : MonoBehaviour
         Target.DoubleClickEvent -= ToTarget;
     }
 
-    private void Update()
-    {
-        //transform.RotateAround(Vector3.zero, Vector3.up, Time.deltaTime);
-    }
-
     public void ToTarget(Target target)
     {
+        StopAllCoroutines();
         if (target is PlaneTarget)
         {
             _isPlane = true;
-            StartSmoothMotion(new Vector3(target.transform.position.x, target.transform.position.y, _planeZ));
+            StartCoroutine(SmoothMotion(new Vector3(target.transform.position.x, target.transform.position.y, _planeZ)));
         }
-        //_parentCamera.RotateAround(point, axis, angle);
+        else
+        {
+            var sphere = target as SphereTarget;
+            for (int i = 0; i < _camPositions.Length; i++)
+            {
+                if (sphere.dam < _camPositions[i].dam)
+                {
+                    StartCoroutine(SmoothMotion(_camPositions[i].target.position));
+                    StartCoroutine(SmoothRotation(_camPositions[i].target.eulerAngles));
+                    return;
+                }
+            }
+        }
     }
 
     public void Default()
     {
-        if (_isPlane)
-        {
-            StartSmoothMotion(_defaultPosition);
-        }
+        StopAllCoroutines();
+        StartCoroutine(SmoothMotion(_defaultPosition));
+        StartCoroutine(SmoothRotation(_defaultRotation));
     }
 
-    private void StartSmoothMotion(Vector3 position)
+    IEnumerator SmoothMotion(Vector3 target) //плавное движение 
     {
-        _position = position;
-        _timeMotion = TIME_MOTION;
-        if (!_isMotion)
-        {
-            StartCoroutine(SmoothMotion());
-        }
-    }
-
-    IEnumerator SmoothMotion() //плавное движение к определенному положению
-    {
-        _isMotion = true;
+        float timeMotion = TIME_MOTION;
         float delta;
         Vector3 position;
 
-        while (_timeMotion > 0)
+        while (timeMotion > 0)
         {
             delta = Time.deltaTime;
-            if (_timeMotion > delta)
+            if (timeMotion > delta)
             {
                 position = transform.position;
-                position += (_position - position) * delta / _timeMotion;
+                position += (target - position) * delta / timeMotion;
             }
             else
             {
-                position = _position;
+                position = target;
             }
 
             transform.position = position;
 
-            _timeMotion -= delta;
+            timeMotion -= delta;
             yield return null;
         }
-
-        _isMotion = false;
     }
+
+    IEnumerator SmoothRotation(Vector3 target) //плавное вращение 
+    {
+        float timeRotation = TIME_MOTION;
+        float delta;
+        Vector3 currentRotation;
+
+        while (timeRotation > 0)
+        {
+            delta = Time.deltaTime;
+            if (timeRotation > delta)
+            {
+                currentRotation = transform.rotation.eulerAngles;
+                currentRotation = currentRotation + (target - currentRotation) * delta / timeRotation;
+            }
+            else
+            {
+                currentRotation = target;
+            }
+
+            transform.rotation = Quaternion.Euler(currentRotation);
+
+            timeRotation -= delta;
+            yield return null;
+        }
+    }
+
+}
+
+
+[System.Serializable]
+public class CameraPosition
+{
+    public int dam;
+    public Transform target;
 }

@@ -84,6 +84,43 @@ public class SphereTarget : Target
         }
     }
 
+    public IEnumerator Rotate(float time)
+    {
+        float currAngle = angle;
+        while (currAngle > 360f)
+        {
+            currAngle -= 360f;
+        }
+        while (currAngle < 0)
+        {
+            currAngle += 360f;
+        }
+
+        //делта угло между текущим и тем чтоб стать 270
+        float deltaAngle;
+        if (currAngle < 90)
+        {
+            deltaAngle = 90 + currAngle;
+        }
+        else
+        {
+            deltaAngle = currAngle - 270;
+        }
+
+        float speed = deltaAngle / time; //скорость движения в секунду
+
+        while (time > Time.deltaTime)
+        {
+            angle -= Time.deltaTime * speed;
+            SetPosition();
+            time -= Time.deltaTime;
+            yield return null;
+        }
+
+        angle = 270f;
+        SetPosition();
+    }
+
 
     protected override bool CanBeActive()
     {
@@ -119,11 +156,6 @@ public class SphereTarget : Target
 
     public override void UpdatePosition(Target target)
     {
-        if (!Enable)
-        {
-            return;
-        }
-
         if (target == null)
         {
             return;
@@ -161,5 +193,12 @@ public class SphereTarget : Target
     protected override Vector2 GetMinHorizontal(Target target)
     {
         return new Vector2(GetNeighborValue(target).x * 0.8f, 0);
+    }
+
+    [ContextMenu("DebugForward")]
+    private void DebugForward()
+    {
+        var obj = Instantiate(new GameObject("Debug"));
+        obj.transform.position = _child.position - 160 * _child.forward;
     }
 }
