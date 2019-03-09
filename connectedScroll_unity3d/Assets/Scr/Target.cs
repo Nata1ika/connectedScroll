@@ -6,9 +6,11 @@ using UnityEngine.EventSystems;
 
 public class Target : MonoBehaviour
 {    
-    public static System.Action<Target> ChangeMotionTargetEvent;
-    public static System.Action<Target> ClickEvent;
-    public static System.Action<Target> DoubleClickEvent;
+    public static Action<Target> ChangeMotionTargetEvent;
+    public static Action<Target> ClickEvent;
+    public static Action<Target> DoubleClickEvent;
+
+    public const float TIME_SMOOTH = 0.5f;
 
     [SerializeField] protected ConnectController _connectController;
     [SerializeField] protected Camera _camera;
@@ -239,7 +241,7 @@ public class Target : MonoBehaviour
     /// <summary>
     /// получить разницу расстояний текущего и эталонного
     /// </summary>
-    protected Vector2 GetDelta(Target target)
+    protected virtual Vector2 GetDelta(Target target)
     {
         return GetDelta(target, GetNeighborValue(target));
     }

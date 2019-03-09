@@ -1,9 +1,11 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
 public class SphereTarget : Target
 {
+    public static Action<float> DeltaRotationEvent;
+
     [SerializeField] Transform _parent_m100;
     [SerializeField] Transform _parent_m50;
     [SerializeField] Transform _parent_0;
@@ -39,25 +41,37 @@ public class SphereTarget : Target
         }
     }
 
-    public void SetPosition(float setAngle, float setDam, float z)
+    public void SetPosition(float setAngle, float setDam, float z, bool immediatly)
     {
-        angle = setAngle;
-        dam = setDam;
-        _zAngle = z;
+        if (immediatly)
+        {
+            angle = setAngle;
+            dam = setDam;
+            _zAngle = z;
 
-        SetPosition();
+            SetPosition();
+            Enable = true;
+        }
+        else
+        {
+            StartCoroutine(Smooth.SmoothMotion(Position(_radius, setDam, setAngle), transform, TIME_SMOOTH, -1, UpdateParent, () => SetPosition(setAngle, setDam, z, true)));
+            StartCoroutine(Smooth.SmoothRotation(ChildRotation(setAngle, setDam, z), _child, TIME_SMOOTH));
+            StartCoroutine(Smooth.SmoothScale(_connectController.GetScale(setDam), _child, TIME_SMOOTH));
+        }
     }
 
     private void SetPosition()
     {
-        rectTransform.localPosition = new Vector3(
-            _hRadius * Mathf.Cos(angle * Mathf.Deg2Rad),
-            _radius * Mathf.Sin(dam * Mathf.Deg2Rad),
-            _hRadius * Mathf.Sin(angle * Mathf.Deg2Rad));
+        rectTransform.localPosition = Position(_radius, dam, angle);
 
-        _child.localEulerAngles = new Vector3(dam, 270 - angle, _zAngle);
+        _child.localEulerAngles = ChildRotation(angle, dam, _zAngle);
         _child.localScale = _connectController.GetScale(dam);
 
+        UpdateParent();
+    }
+
+    private void UpdateParent()
+    {
         if (rectTransform.localPosition.z < -100f)
         {
             transform.SetParent(_parent_m100);
@@ -82,6 +96,20 @@ public class SphereTarget : Target
         {
             transform.SetParent(_parent_p100);
         }
+    }
+
+    private static Vector3 Position(float radius, float dam, float angle)
+    {
+        float hRadius = radius * Mathf.Cos(dam * Mathf.Deg2Rad);
+        return new Vector3(
+            hRadius * Mathf.Cos(angle * Mathf.Deg2Rad),
+            radius * Mathf.Sin(dam * Mathf.Deg2Rad),
+            hRadius * Mathf.Sin(angle * Mathf.Deg2Rad));
+    }
+
+    private static Vector3 ChildRotation(float angle, float dam, float z)
+    {
+        return new Vector3(dam, 270 - angle, z);
     }
 
     public IEnumerator Rotate(float time)
@@ -111,7 +139,10 @@ public class SphereTarget : Target
 
         while (time > Time.deltaTime)
         {
-            angle -= Time.deltaTime * speed;
+            float delta = -Time.deltaTime * speed;
+            DeltaRotationEvent?.Invoke(delta);
+
+            angle += delta;
             SetPosition();
             time -= Time.deltaTime;
             yield return null;
@@ -149,7 +180,10 @@ public class SphereTarget : Target
 
         float lastAngle = angle;
         angle = 360 - Mathf.Acos(x / _hRadius) * Mathf.Rad2Deg;
-        _deltaClcik += new Vector2(Mathf.Abs(angle - lastAngle), 0);
+        float delta = angle - lastAngle;
+        _deltaClcik += new Vector2(Mathf.Abs(delta), 0);
+
+        DeltaRotationEvent?.Invoke(delta);
 
         SetPosition();
     }
@@ -184,15 +218,22 @@ public class SphereTarget : Target
         }
     }
 
+    protected override Vector2 GetDelta(Target target)
+    {
+        var delta = base.GetDelta(target);
+        delta.x = Smooth.Angle180(delta.x);
+        return delta;
+    }
+
     protected override Vector2 GetCurrentValue(Target target)
     {
         var sphere = target as SphereTarget;
-        return new Vector2(angle - sphere.angle, 0 /*dam - sphere.dam*/);
+        return new Vector2(Smooth.Angle180(angle - sphere.angle), 0 /*dam - sphere.dam*/);
     }
 
     protected override Vector2 GetMinHorizontal(Target target)
     {
-        return new Vector2(GetNeighborValue(target).x * 0.8f, 0);
+        return new Vector2(Mathf.Abs(GetNeighborValue(target).x * 0.8f), 0);
     }
 
     [ContextMenu("DebugForward")]

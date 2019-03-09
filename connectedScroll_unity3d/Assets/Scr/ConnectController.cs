@@ -8,7 +8,7 @@ public class ConnectController : MonoBehaviour
     /// <summary>
     /// настройки объектов по рядам для сферического расположения
     /// </summary>
-    [SerializeField] Row[] _rowSphere;
+    [SerializeField] RowSphere[] _rowSphere;
 
     /// <summary>
     /// расстановка по рядам для размещения на плоскости
@@ -20,41 +20,26 @@ public class ConnectController : MonoBehaviour
     /// </summary>
     [SerializeField] AnimationCurve _sphereScale;
 
+    [SerializeField] Cube _sphereObj;
+
     [SerializeField] Vector2 _deltaPositionPlane;
     [SerializeField] Vector2 _offsetPositionPlane;
 
     private Dictionary<Target, Target> _neighborSequence = new Dictionary<Target, Target>();
     private Queue<Target> _neighborQueue = new Queue<Target>();
 
-    private PlaneTarget[] _planeTargets;
-    private SphereTarget[] _sphereTargets;
-
     private bool _isPlane = true;
 
     private void Start()
     {
         //сфера
-        _sphereTargets = gameObject.GetComponentsInChildren<SphereTarget>();
-        if (_sphereTargets.Length != SummCount(_rowSphere))
-        {
-            Debug.LogErrorFormat("count obj SPHERE = {0}, infoCount = {1}", _sphereTargets.Length, SummCount(_rowSphere));
-        }
-
         SetPositionSphere(true);
-
-        Screed(_sphereTargets, _rowSphere);
+        Screed(_rowSphere);
         ScreedSphere();
 
-
         //плоскость
-        _planeTargets = gameObject.GetComponentsInChildren<PlaneTarget>();
-        if (_planeTargets.Length != SummCount(_rowPlane))
-        {
-            Debug.LogErrorFormat("count obj PLANE = {0}, infoCount = {1}", _planeTargets.Length, SummCount(_rowPlane));
-        }
-
         SetPositionPlane(true);
-        Screed(_planeTargets, _rowPlane);      
+        Screed(_rowPlane);      
         
 
         Target.ChangeMotionTargetEvent += ChangeTarget;
@@ -69,17 +54,15 @@ public class ConnectController : MonoBehaviour
         Target.DoubleClickEvent -= DoubleClick;
     }
 
-    private void Screed(Target[] targets, RowPlane[] row)
+    private void Screed(RowBase[] row)
     {
         //по каждому ряду стяжка
         for (int i = 0; i < row.Length; i++) //i ряд
         {
             for (int j = 0; j < row[i].count - 1; j++) //j элемент в ряду
             {
-                int index = GetIndex(i, j, row);
-
-                targets[index].AddNeighbor(targets[index + 1]);
-                targets[index + 1].AddNeighbor(targets[index]);
+                row[i].GetTarget(j).AddNeighbor(row[i].GetTarget(j + 1));
+                row[i].GetTarget(j + 1).AddNeighbor(row[i].GetTarget(j));
             }
         }
 
@@ -90,20 +73,14 @@ public class ConnectController : MonoBehaviour
             {
                 if (j < row[i + 1].count)
                 {
-                    int index = GetIndex(i, j, row);
-                    int next = GetIndex(i + 1, j, row);
-
-                    targets[index].AddNeighbor(targets[next]);
-                    targets[next].AddNeighbor(targets[index]);
+                    row[i].GetTarget(j).AddNeighbor(row[i + 1].GetTarget(j));
+                    row[i + 1].GetTarget(j).AddNeighbor(row[i].GetTarget(j));
                 }
 
                 if (row[i].count != row[i + 1].count && row[i + 1].count - j - 1 >= 0) //с конца
                 {
-                    int index = GetIndex(i, row[i].count - j - 1, row);
-                    int next = GetIndex(i + 1, row[i + 1].count - j - 1, row);
-
-                    targets[index].AddNeighbor(targets[next]);
-                    targets[next].AddNeighbor(targets[index]);
+                    row[i].GetTarget(row[i].count - j - 1).AddNeighbor(row[i + 1].GetTarget(row[i + 1].count - j - 1));
+                    row[i + 1].GetTarget(row[i + 1].count - j - 1).AddNeighbor(row[i].GetTarget(row[i].count - j - 1));
                 }
             }
         }
@@ -114,11 +91,8 @@ public class ConnectController : MonoBehaviour
         //сферическая стяжка первого и последнего элементов в каждом ряду
         for (int i = 0; i < _rowSphere.Length; i++) //i ряд
         {
-            int first = GetIndex(i, 0, _rowSphere);
-            int last = GetIndex(i, _rowSphere[i].count - 1, _rowSphere);
-
-            _sphereTargets[first].AddNeighbor(_sphereTargets[last]);
-            _sphereTargets[last].AddNeighbor(_sphereTargets[first]);
+            _rowSphere[i].GetTarget(0).AddNeighbor(_rowSphere[i].GetTarget(_rowSphere[i].count - 1));
+            _rowSphere[i].GetTarget(_rowSphere[i].count - 1).AddNeighbor(_rowSphere[i].GetTarget(0));
         }
 
 
@@ -132,29 +106,31 @@ public class ConnectController : MonoBehaviour
 
             for (int j = 0; j < _rowSphere[i].count; j++) //j элемент в ряду
             {
-                int index = GetIndex(i, j, _rowSphere);
-                int next;
+                var target = _rowSphere[i].GetTarget(j);
+                Target next;
                 if (i % 2 == 0)
                 {
-                    next = GetIndex(i + 1, j - 1 >= 0 ? j - 1 : _rowSphere[i + 1].count - 1, _rowSphere);
+                    next = _rowSphere[i + 1].GetTarget(j - 1 >= 0 ? j - 1 : _rowSphere[i + 1].count - 1);
                 }
                 else
                 {
-                    next = GetIndex(i + 1, j + 1 < _rowSphere[i + 1].count ? j + 1 : 0, _rowSphere);
+                    next = _rowSphere[i + 1].GetTarget(j + 1 < _rowSphere[i + 1].count ? j + 1 : 0);
                 }
 
-                _sphereTargets[index].AddNeighbor(_sphereTargets[next]);
-                _sphereTargets[next].AddNeighbor(_sphereTargets[index]);
+                target.AddNeighbor(next);
+                next.AddNeighbor(target);
             }
         }
     }
 
     private void SetPositionPlane(bool immediatly)
     {
+        _sphereObj.SetActive(false);
+
         _neighborSequence.Clear();
         _neighborQueue.Clear();
 
-        PlaneTarget.Enable = true;
+        PlaneTarget.Enable = false;
         SphereTarget.Enable = false;
 
         _isPlane = true;
@@ -168,19 +144,20 @@ public class ConnectController : MonoBehaviour
             for (int j = 0; j < _rowPlane[i].count; j++) //j элемент в ряду
             {
                 float x = (middleX - j) * _deltaPositionPlane.x;
-                int index = GetIndex(i, j, _rowPlane);
-                _planeTargets[index].SetPosition(x + _offsetPositionPlane.x, y + _offsetPositionPlane.y);
+                _rowPlane[i].GetPlane(j).SetPosition(x + _offsetPositionPlane.x, y + _offsetPositionPlane.y, immediatly);
             }
         }
     }
 
     private void SetPositionSphere(bool immediatly)
     {
+        _sphereObj.SetActive(true);
+
         _neighborSequence.Clear();
         _neighborQueue.Clear();
 
         PlaneTarget.Enable = false;
-        SphereTarget.Enable = true;
+        SphereTarget.Enable = false;
 
         _isPlane = false;
 
@@ -188,8 +165,7 @@ public class ConnectController : MonoBehaviour
         {
             for (int j = 0; j < _rowSphere[i].count; j++) //j элемент в ряду
             {
-                int index = GetIndex(i, j, _rowSphere);
-                _sphereTargets[index].SetPosition((j + 0.5f * (i % 2)) * 360f / _rowSphere[i].count, _rowSphere[i].damAngle, _rowSphere[i].zRotation);
+                _rowSphere[i].GetSphere(j).SetPosition((j + 0.5f * (i % 2)) * 360f / _rowSphere[i].count, _rowSphere[i].damAngle, _rowSphere[i].zRotation, immediatly);
             }
         }
     }
@@ -199,7 +175,7 @@ public class ConnectController : MonoBehaviour
         return _sphereScale.Evaluate(dam) * Vector3.one;
     }
 
-    private int SummCount(RowPlane[] row)
+    private int SummCount(RowBase[] row)
     {
         int summ = 0;
         for (int i = 0; i < row.Length; i++)
@@ -207,24 +183,6 @@ public class ConnectController : MonoBehaviour
             summ += row[i].count;
         }
         return summ;
-    }
-
-
-    /// <summary>
-    /// получить индекс объекта в общей нумерации
-    /// </summary>
-    /// <param name="i">ряд</param>
-    /// <param name="j">элемент в ряду</param>
-    /// <returns></returns>
-    private int GetIndex(int i, int j, RowPlane[] row)
-    {
-        int index = 0;
-        for (int r = 0; r < i; r++)
-        {
-            index += row[r].count;
-        }
-        index += j;
-        return index;
     }
 
     private void ChangeTarget(Target obj)
@@ -323,15 +281,47 @@ public class ConnectController : MonoBehaviour
     }
 }
 
-[Serializable]
-public class Row : RowPlane
+public abstract class RowBase
 {
-    public int damAngle;
-    public float zRotation;
+    public abstract int count { get; }
+    public abstract Target GetTarget(int index);
 }
 
 [Serializable]
-public class RowPlane
+public class RowPlane : RowBase
 {
-    public int count;
+    public PlaneTarget[] planeTargets;
+
+    public override int count => planeTargets.Length;
+
+    public override Target GetTarget(int index)
+    {
+        return planeTargets[index];
+    }
+
+    public PlaneTarget GetPlane(int index)
+    {
+        return planeTargets[index];
+    }
 }
+
+[Serializable]
+public class RowSphere : RowBase
+{
+    public int damAngle;
+    public float zRotation;
+    public SphereTarget[] sphereTargets;
+
+    public override int count => sphereTargets.Length;
+
+    public override Target GetTarget(int index)
+    {
+        return sphereTargets[index];
+    }
+
+    public SphereTarget GetSphere(int index)
+    {
+        return sphereTargets[index];
+    }
+}
+

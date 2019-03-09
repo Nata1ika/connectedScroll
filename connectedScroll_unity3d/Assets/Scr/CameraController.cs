@@ -38,7 +38,7 @@ public class CameraController : MonoBehaviour
         if (target is PlaneTarget)
         {
             _isPlane = true;
-            StartCoroutine(SmoothMotion(new Vector3(target.transform.position.x, target.transform.position.y, _planeZ)));
+            StartCoroutine(Smooth.SmoothMotion(new Vector3(target.transform.position.x, target.transform.position.y, _planeZ), transform, TIME_MOTION));
         }
         else
         {
@@ -47,8 +47,8 @@ public class CameraController : MonoBehaviour
             {
                 if (sphere.dam < _camPositions[i].dam)
                 {
-                    StartCoroutine(SmoothMotion(_camPositions[i].target.position));
-                    StartCoroutine(SmoothRotation(_camPositions[i].target.eulerAngles));
+                    StartCoroutine(Smooth.SmoothMotion(_camPositions[i].target.position, transform, TIME_MOTION));
+                    StartCoroutine(Smooth.SmoothRotation(_camPositions[i].target.eulerAngles, transform, TIME_MOTION));
                     return;
                 }
             }
@@ -58,61 +58,9 @@ public class CameraController : MonoBehaviour
     public void Default()
     {
         StopAllCoroutines();
-        StartCoroutine(SmoothMotion(_defaultPosition));
-        StartCoroutine(SmoothRotation(_defaultRotation));
-    }
-
-    IEnumerator SmoothMotion(Vector3 target) //плавное движение 
-    {
-        float timeMotion = TIME_MOTION;
-        float delta;
-        Vector3 position;
-
-        while (timeMotion > 0)
-        {
-            delta = Time.deltaTime;
-            if (timeMotion > delta)
-            {
-                position = transform.position;
-                position += (target - position) * delta / timeMotion;
-            }
-            else
-            {
-                position = target;
-            }
-
-            transform.position = position;
-
-            timeMotion -= delta;
-            yield return null;
-        }
-    }
-
-    IEnumerator SmoothRotation(Vector3 target) //плавное вращение 
-    {
-        float timeRotation = TIME_MOTION;
-        float delta;
-        Vector3 currentRotation;
-
-        while (timeRotation > 0)
-        {
-            delta = Time.deltaTime;
-            if (timeRotation > delta)
-            {
-                currentRotation = transform.rotation.eulerAngles;
-                currentRotation = currentRotation + (target - currentRotation) * delta / timeRotation;
-            }
-            else
-            {
-                currentRotation = target;
-            }
-
-            transform.rotation = Quaternion.Euler(currentRotation);
-
-            timeRotation -= delta;
-            yield return null;
-        }
-    }
+        StartCoroutine(Smooth.SmoothMotion(_defaultPosition, transform, TIME_MOTION));
+        StartCoroutine(Smooth.SmoothRotation(_defaultRotation, transform, TIME_MOTION));
+    } 
 
 }
 
