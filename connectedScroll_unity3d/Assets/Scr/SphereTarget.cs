@@ -5,21 +5,18 @@ using UnityEngine;
 public class SphereTarget : Target
 {
     public static Action<float> DeltaRotationEvent;
+    public static Action<float, float> DeltaRotationVerticalEvent;
 
-    [SerializeField] Transform _parent_m100;
-    [SerializeField] Transform _parent_m50;
-    [SerializeField] Transform _parent_0;
-    [SerializeField] Transform _parent_50;
-    [SerializeField] Transform _parent_100;
-    [SerializeField] Transform _parent_p100;
-
+    [SerializeField] Parent[] _parents;
     [SerializeField] float _radius;
 
     public float angle;
     public float dam;
-    private float _zAngle;
+    private static float Z_ANGLE = 45f;
 
     protected override float DELTA_ERROR => 0.1f;
+
+    private Vector3 _lastMousePosition;
 
     private float _hRadius
     {
@@ -41,21 +38,20 @@ public class SphereTarget : Target
         }
     }
 
-    public void SetPosition(float setAngle, float setDam, float z, bool immediatly)
+    public void SetPosition(float setAngle, float setDam, bool immediatly)
     {
         if (immediatly)
         {
             angle = setAngle;
             dam = setDam;
-            _zAngle = z;
 
             SetPosition();
             Enable = true;
         }
         else
         {
-            StartCoroutine(Smooth.SmoothMotion(Position(_radius, setDam, setAngle), transform, TIME_SMOOTH, -1, UpdateParent, () => SetPosition(setAngle, setDam, z, true)));
-            StartCoroutine(Smooth.SmoothRotation(ChildRotation(setAngle, setDam, z), _child, TIME_SMOOTH));
+            StartCoroutine(Smooth.SmoothMotion(Position(_radius, setDam, setAngle), transform, TIME_SMOOTH, -1, UpdateParent, () => SetPosition(setAngle, setDam, true)));
+            StartCoroutine(Smooth.SmoothRotation(ChildRotation(setAngle, setDam, Z_ANGLE), _child, TIME_SMOOTH));
             StartCoroutine(Smooth.SmoothScale(_connectController.GetScale(setDam), _child, TIME_SMOOTH));
         }
     }
@@ -64,7 +60,7 @@ public class SphereTarget : Target
     {
         rectTransform.localPosition = Position(_radius, dam, angle);
 
-        _child.localEulerAngles = ChildRotation(angle, dam, _zAngle);
+        _child.localEulerAngles = ChildRotation(angle, dam, Z_ANGLE);
         _child.localScale = _connectController.GetScale(dam);
 
         UpdateParent();
@@ -72,29 +68,13 @@ public class SphereTarget : Target
 
     private void UpdateParent()
     {
-        if (rectTransform.localPosition.z < -100f)
+        for (int i = 0; i < _parents.Length; i++)
         {
-            transform.SetParent(_parent_m100);
-        }
-        else if (rectTransform.localPosition.z < -50f)
-        {
-            transform.SetParent(_parent_m50);
-        }
-        else if (rectTransform.localPosition.z < 0)
-        {
-            transform.SetParent(_parent_0);
-        }
-        else if (rectTransform.localPosition.z < 50)
-        {
-            transform.SetParent(_parent_50);
-        }
-        else if (rectTransform.localPosition.z < 100)
-        {
-            transform.SetParent(_parent_100);
-        }
-        else
-        {
-            transform.SetParent(_parent_p100);
+            if (rectTransform.localPosition.z < _parents[i].value)
+            {
+                transform.SetParent(_parents[i].transform);
+                return;
+            }
         }
     }
 
@@ -112,17 +92,21 @@ public class SphereTarget : Target
         return new Vector3(dam, 270 - angle, z);
     }
 
+    public override void AutoRotate()
+    {
+        float delta = 3 * Time.deltaTime;
+        DeltaRotationEvent?.Invoke(delta);
+        angle += delta;
+        SetPosition();
+    }
+
+    /// <summary>
+    /// повернуть так чтоб этот элемент был в центре
+    /// </summary>
     public IEnumerator Rotate(float time)
     {
         float currAngle = angle;
-        while (currAngle > 360f)
-        {
-            currAngle -= 360f;
-        }
-        while (currAngle < 0)
-        {
-            currAngle += 360f;
-        }
+        currAngle = Smooth.Angle360(currAngle);
 
         //делта угло между текущим и тем чтоб стать 270
         float deltaAngle;
@@ -155,11 +139,21 @@ public class SphereTarget : Target
 
     protected override bool CanBeActive()
     {
-        if (rectTransform.localPosition.z > 0)
+        if (Vector3.Angle(_camera.gameObject.transform.forward, _child.forward) > 50f)
         {
             return false;
         }
-        return base.CanBeActive();
+
+        Vector2 childPoint;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(_child, Input.mousePosition, _camera, out childPoint);
+        if (_child.rect.Contains(childPoint))
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, Input.mousePosition, _camera, out _localPoint);
+            _lastMousePosition = Input.mousePosition;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -177,6 +171,9 @@ public class SphereTarget : Target
 
         float x = rectTransform.localPosition.x + newPoint.x - _localPoint.x;
         x = Mathf.Clamp(x, -_hRadius, _hRadius);
+
+        DeltaRotationVerticalEvent?.Invoke(Input.mousePosition.y, _lastMousePosition.y);
+        _lastMousePosition = Input.mousePosition;
 
         float lastAngle = angle;
         angle = 360 - Mathf.Acos(x / _hRadius) * Mathf.Rad2Deg;

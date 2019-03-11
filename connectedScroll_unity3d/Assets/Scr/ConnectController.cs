@@ -30,8 +30,15 @@ public class ConnectController : MonoBehaviour
 
     private bool _isPlane = true;
 
+    [SerializeField] SphereTarget _targetAuto;
+    private float _timeAutoRotation = -1f;
+    private float MIN_TIME_AUTO_ROTATION = 2f; //спустя это время бездействия начинаем вращение _
+
     private void Start()
     {
+        CreatePlane();
+        CreateSphere();
+
         //сфера
         SetPositionSphere(true);
         Screed(_rowSphere);
@@ -126,6 +133,7 @@ public class ConnectController : MonoBehaviour
     private void SetPositionPlane(bool immediatly)
     {
         _sphereObj.SetActive(false);
+        _timeAutoRotation = Time.deltaTime;
 
         _neighborSequence.Clear();
         _neighborQueue.Clear();
@@ -143,7 +151,7 @@ public class ConnectController : MonoBehaviour
             float middleX = _rowPlane[i].count / 2f;
             for (int j = 0; j < _rowPlane[i].count; j++) //j элемент в ряду
             {
-                float x = (middleX - j) * _deltaPositionPlane.x;
+                float x = (j - middleX) * _deltaPositionPlane.x;
                 _rowPlane[i].GetPlane(j).SetPosition(x + _offsetPositionPlane.x, y + _offsetPositionPlane.y, immediatly);
             }
         }
@@ -152,6 +160,7 @@ public class ConnectController : MonoBehaviour
     private void SetPositionSphere(bool immediatly)
     {
         _sphereObj.SetActive(true);
+        _timeAutoRotation = Time.deltaTime;
 
         _neighborSequence.Clear();
         _neighborQueue.Clear();
@@ -165,7 +174,7 @@ public class ConnectController : MonoBehaviour
         {
             for (int j = 0; j < _rowSphere[i].count; j++) //j элемент в ряду
             {
-                _rowSphere[i].GetSphere(j).SetPosition((j + 0.5f * (i % 2)) * 360f / _rowSphere[i].count, _rowSphere[i].damAngle, _rowSphere[i].zRotation, immediatly);
+                _rowSphere[i].GetSphere(j).SetPosition((j + 0.5f * (i % 2)) * 360f / _rowSphere[i].count, _rowSphere[i].damAngle, immediatly);
             }
         }
     }
@@ -189,9 +198,17 @@ public class ConnectController : MonoBehaviour
     {
         if (obj == null)
         {
+            _timeAutoRotation = Time.deltaTime;
             return;
         }
 
+        _timeAutoRotation = -1f;
+
+        CreateNeighborSequence(obj);
+    }
+
+    private void CreateNeighborSequence(Target obj)
+    {
         _neighborSequence.Clear();
         _neighborQueue.Clear();
 
@@ -211,6 +228,25 @@ public class ConnectController : MonoBehaviour
         }
     }
 
+    private Target GetFirstNeighborSequence()
+    {
+        if (_neighborSequence.Count == 0)
+        {
+            CreateNeighborSequence(_targetAuto);
+            return _targetAuto;
+        }
+
+        foreach (var element in _neighborSequence)
+        {
+            if (element.Value == null)
+            {
+                return element.Key;
+            }
+        }
+
+        return null;
+    }
+
     public void AddNeighborSequence(Target first, Target second)
     {
         if (_neighborSequence.ContainsKey(first))
@@ -223,6 +259,20 @@ public class ConnectController : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (_timeAutoRotation >= 0)
+        {
+            _timeAutoRotation += Time.deltaTime;
+        }
+
+        if (_timeAutoRotation > MIN_TIME_AUTO_ROTATION && SphereTarget.Enable && !_isPlane)
+        {
+            var target = GetFirstNeighborSequence();
+            if (target != null)
+            {
+                target.AutoRotate();
+            }
+        }
+
         foreach(var obj in _neighborSequence)
         {
             obj.Key.UpdatePosition(obj.Value);
@@ -279,17 +329,49 @@ public class ConnectController : MonoBehaviour
         PlaneTarget.Enable = false;
         SphereTarget.Enable = false;
     }
+
+    private void CreateSphere()
+    {
+        var sphere = gameObject.GetComponentsInChildren<SphereTarget>();
+        int index = 0;
+        for (int i = 0; i < _rowSphere.Length; i++)
+        {
+            _rowSphere[i].sphereTargets = new SphereTarget[_rowSphere[i].setCount];
+            for (int j = 0; j < _rowSphere[i].count; j++)
+            {
+                _rowSphere[i].sphereTargets[j] = sphere[index];
+                index++;
+            }
+        }
+    }
+
+    private void CreatePlane()
+    {
+        var plane = gameObject.GetComponentsInChildren<PlaneTarget>();
+        int index = 0;
+        for (int i = 0; i < _rowPlane.Length; i++)
+        {
+            _rowPlane[i].planeTargets = new PlaneTarget[_rowPlane[i].setCount];
+            for (int j = 0; j < _rowPlane[i].count; j++)
+            {
+                _rowPlane[i].planeTargets[j] = plane[index];
+                index++;
+            }
+        }
+    }
 }
 
 public abstract class RowBase
 {
     public abstract int count { get; }
     public abstract Target GetTarget(int index);
+    public int setCount;
 }
 
 [Serializable]
 public class RowPlane : RowBase
 {
+    [HideInInspector]
     public PlaneTarget[] planeTargets;
 
     public override int count => planeTargets.Length;
@@ -309,7 +391,8 @@ public class RowPlane : RowBase
 public class RowSphere : RowBase
 {
     public int damAngle;
-    public float zRotation;
+
+    [HideInInspector]
     public SphereTarget[] sphereTargets;
 
     public override int count => sphereTargets.Length;
