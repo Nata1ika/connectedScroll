@@ -292,7 +292,7 @@ public class ConnectController : MonoBehaviour
         }
     }
 
-    private void DoubleClick(Target target)
+    private void DoubleClick(Target target, bool needWait)
     {
         Debug.Log("DOUBLE  " + target.gameObject.name);
         StopClick();
@@ -328,6 +328,70 @@ public class ConnectController : MonoBehaviour
 
         PlaneTarget.Enable = false;
         SphereTarget.Enable = false;
+    }
+
+    public Target GetNext(Target target)
+    {
+        if (target is PlaneTarget)
+        {
+            return GetNext(target, _rowPlane);
+        }
+        else
+        {
+            return GetNext(target, _rowSphere);
+        }
+    }
+
+    private static Target GetNext(Target target, RowBase[] row)
+    {
+        bool next = false;
+        for (int i = 0; i < row.Length; i++)
+        {
+            for (int j = 0; j < row[i].count; j++)
+            {
+                if (next)
+                {
+                    return row[i].GetTarget(j);
+                }
+
+                if (row[i].GetTarget(j) == target)
+                {
+                    next = true;
+                }
+            }
+        }
+        return row[0].GetTarget(0);
+    }
+
+    public Target GetPrev(Target target)
+    {
+        if (target is PlaneTarget)
+        {
+            return GetPrev(target, _rowPlane);
+        }
+        else
+        {
+            return GetPrev(target, _rowSphere);
+        }
+    }
+
+    private static Target GetPrev(Target target, RowBase[] row)
+    {
+        Target prev = null;
+        for (int i = 0; i < row.Length; i++)
+        {
+            for (int j = 0; j < row[i].count; j++)
+            {
+                if (prev != null && row[i].GetTarget(j) == target)
+                {
+                    return prev;
+                }
+
+                prev = row[i].GetTarget(j);
+            }
+        }
+
+        return prev;
     }
 
     private void CreateSphere()

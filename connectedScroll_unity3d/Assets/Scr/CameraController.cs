@@ -57,7 +57,7 @@ public class CameraController : MonoBehaviour
         transform.RotateAround(Vector3.zero, Vector3.right, angle);
     }
 
-    public void ToTarget(Target target)
+    public void ToTarget(Target target, bool needWait)
     {
         StopAllCoroutines();
         if (target is PlaneTarget)

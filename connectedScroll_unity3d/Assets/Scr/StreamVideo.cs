@@ -10,16 +10,19 @@ public class StreamVideo : MonoBehaviour
     [SerializeField] VideoPlayer _video;
     [SerializeField] AudioSource _audio;
 
-    private void Start()
+    public void Show(Target target, bool needWait)
     {
-        StartCoroutine(PlayVideo());
+        StartCoroutine(PlayVideo(needWait));
     }
 
-    private IEnumerator PlayVideo()
+    private IEnumerator PlayVideo(bool needWait)
     {
         _video.Prepare();
 
-        yield return new WaitForSeconds(CameraController.TIME_MOTION);
+        if (needWait)
+        {
+            yield return new WaitForSeconds(CameraController.TIME_MOTION);
+        }
         
         var wait = new WaitForSeconds(1f);
         while (!_video.isPrepared)

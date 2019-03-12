@@ -8,7 +8,7 @@ public class Target : MonoBehaviour
 {    
     public static Action<Target> ChangeMotionTargetEvent;
     public static Action<Target> ClickEvent;
-    public static Action<Target> DoubleClickEvent;
+    public static Action<Target, bool> DoubleClickEvent;
 
     public const float TIME_SMOOTH = 0.5f;
 
@@ -289,7 +289,7 @@ public class Target : MonoBehaviour
         {
             if (_wasFirstClick)
             {
-                DoubleClickEvent?.Invoke(this);
+                DoubleClickEvent?.Invoke(this, true);
                 _wasFirstClick = false;
             }
             else
