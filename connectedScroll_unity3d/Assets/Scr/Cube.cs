@@ -36,7 +36,7 @@ public class Cube : MonoBehaviour
         {
             for (int j = 0; j < _parents.Length; j++)
             {
-                if (_obj[i].transform.position.z < _parents[j].pos)
+                if (_obj[i].transform.position.z < _parents[j].value)
                 {
                     _obj[i].SetParent(_parents[j].transform);
                     break;
@@ -51,11 +51,4 @@ public class Cube : MonoBehaviour
         UpdateParent();
     }
     */
-}
-
-[System.Serializable]
-public class Parent
-{
-    public Transform transform;
-    public int pos;
 }

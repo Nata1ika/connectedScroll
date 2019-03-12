@@ -15,7 +15,7 @@ public class Target : MonoBehaviour
     [SerializeField] protected ConnectController _connectController;
     [SerializeField] protected Camera _camera;
 
-    [SerializeField] protected Transform _child;
+    [SerializeField] protected RectTransform _child;
 
     private List<KeyValuePair<Target, Vector2>> _neighborHorizontal = new List<KeyValuePair<Target, Vector2>>();
     //private KeyValuePair<Target, float> _neighborVertical;
@@ -189,6 +189,11 @@ public class Target : MonoBehaviour
             
             rectTransform.anchoredPosition = rectTransform.anchoredPosition - delta;
         }
+    }
+
+    public virtual void AutoRotate()
+    {
+
     }
 
     /// <summary>
