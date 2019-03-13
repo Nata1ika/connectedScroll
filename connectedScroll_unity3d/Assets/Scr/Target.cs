@@ -12,6 +12,8 @@ public class Target : MonoBehaviour
 
     public const float TIME_SMOOTH = 0.5f;
 
+    public GameObject contentPrefab;
+
     [SerializeField] protected ConnectController _connectController;
     [SerializeField] protected Camera _camera;
 
