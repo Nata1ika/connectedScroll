@@ -28,21 +28,21 @@ public class TargetList : MonoBehaviour
         _activeTarget[4].Show(_connect.GetNext(_activeTarget[3].Target));
     }
 
-    public void Next()
+    public void Prev()
     {
         StopAllCoroutines();
 
-        StartCoroutine(Smooth.SmoothMotion(GetPosition(1), _activeTarget[0].gameObject.transform, TIME, -1f, null, FinishNext));
+        StartCoroutine(Smooth.SmoothMotion(GetPosition(1), _activeTarget[0].gameObject.transform, TIME, -1f, null, FinishPrev));
         for (int i = 1; i < _activeTarget.Length; i++)
         {
             StartCoroutine(Smooth.SmoothMotion(GetPosition(i + 1), _activeTarget[i].gameObject.transform, TIME));
         }
     }
 
-    public void Prev()
+    public void Next()
     {
         StopAllCoroutines();
-        StartCoroutine(Smooth.SmoothMotion(GetPosition(-1), _activeTarget[0].gameObject.transform, TIME, -1f, null, FinishPrev));
+        StartCoroutine(Smooth.SmoothMotion(GetPosition(-1), _activeTarget[0].gameObject.transform, TIME, -1f, null, FinishNext));
         for (int i = 1; i < _activeTarget.Length; i++)
         {
             StartCoroutine(Smooth.SmoothMotion(GetPosition(i - 1), _activeTarget[i].gameObject.transform, TIME));
@@ -88,7 +88,7 @@ public class TargetList : MonoBehaviour
         }
     }
 
-    private void FinishNext()
+    private void FinishPrev()
     {
         var empty = _activeTarget[_activeTarget.Length - 1];
         for (int i = _activeTarget.Length - 1; i > 0; i--)
@@ -100,7 +100,7 @@ public class TargetList : MonoBehaviour
         SetPosition();
     }
 
-    private void FinishPrev()
+    private void FinishNext()
     {
         var empty = _activeTarget[0];
         for (int i = 0; i < _activeTarget.Length - 1; i++)
