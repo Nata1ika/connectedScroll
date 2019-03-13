@@ -25,6 +25,10 @@ public class ConnectController : MonoBehaviour
     [SerializeField] Vector2 _deltaPositionPlane;
     [SerializeField] Vector2 _offsetPositionPlane;
 
+    [SerializeField] Transform _leftDown;
+    [SerializeField] Transform _rightUp;
+    [SerializeField] Transform _centr;
+
     private Dictionary<Target, Target> _neighborSequence = new Dictionary<Target, Target>();
     private Queue<Target> _neighborQueue = new Queue<Target>();
 
@@ -46,7 +50,8 @@ public class ConnectController : MonoBehaviour
 
         //плоскость
         SetPositionPlane(true);
-        Screed(_rowPlane);      
+        SetPlaneBorder();
+        Screed(_rowPlane);
         
 
         Target.ChangeMotionTargetEvent += ChangeTarget;
@@ -153,6 +158,23 @@ public class ConnectController : MonoBehaviour
             {
                 float x = (j - middleX) * _deltaPositionPlane.x;
                 _rowPlane[i].GetPlane(j).SetPosition(x + _offsetPositionPlane.x, y + _offsetPositionPlane.y, immediatly);
+            }
+        }
+    }
+
+    private void SetPlaneBorder()
+    {
+        for (int i = 0; i < _rowPlane.Length; i++)
+        {
+            float up = _rightUp.position.y - _centr.position.y - i * _deltaPositionPlane.y;
+            float down = _leftDown.position.y - _centr.position.y + (_rowPlane.Length - i) * _deltaPositionPlane.y;
+
+            for (int j = 0; j < _rowPlane[i].count; j++)
+            {
+                float left = _leftDown.position.x - _centr.position.x + j * _deltaPositionPlane.x;
+                float right = _rightUp.position.x - _centr.position.x - (_rowPlane[i].count - j) * _deltaPositionPlane.x;
+
+                _rowPlane[i].planeTargets[j].SetBorder(new Vector2(left, down), new Vector2(right, up));
             }
         }
     }
@@ -392,7 +414,7 @@ public class ConnectController : MonoBehaviour
         }
 
         return prev;
-    }
+    }    
 
     private void CreateSphere()
     {

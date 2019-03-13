@@ -154,11 +154,7 @@ public class Target : MonoBehaviour
     /// </summary>
     protected virtual void MotionActive()
     {
-        Vector2 newPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, Input.mousePosition, _camera, out newPoint);
-        Vector2 delta = newPoint - _localPoint;
-        _deltaClcik += new Vector2(Mathf.Abs(delta.x), Mathf.Abs(delta.y));
-        rectTransform.anchoredPosition = rectTransform.anchoredPosition + delta; //new Vector2(newPoint.x - _localPoint.x, 0);
+        
     }
 
     public virtual void UpdatePosition(Target target)
