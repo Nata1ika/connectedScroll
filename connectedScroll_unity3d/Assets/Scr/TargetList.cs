@@ -11,7 +11,7 @@ public class TargetList : MonoBehaviour
 
     private ActiveTarget[] _activeTarget;
 
-    private float TIME = 0.5f;
+    private float TIME = 0.3f;
 
     private void OnDisable()
     {
@@ -109,5 +109,6 @@ public class TargetList : MonoBehaviour
         }
         _activeTarget[_activeTarget.Length - 1] = empty;
         _activeTarget[_activeTarget.Length - 1].Show(_connect.GetNext(_activeTarget[_activeTarget.Length - 2].Target));
+        SetPosition();
     }
 }
